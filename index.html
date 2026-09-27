@@ -60,16 +60,56 @@ footer{text-align:center;background:#f9e9e4;padding:75px 20px 90px}.footer-title
 </main>
 <footer><div class="crest">♕</div><div class="footer-title">Raha Turns One</div><div class="footer-small">14 OCTOBER 2026 · 6:00 PM · AT OUR HOME</div><div class="line"></div><div class="footer-script">With love, Rahamadthulla &amp; Preethi</div></footer>
 <div class="modal" id="modal"><button class="close" id="close">×</button><img id="modalImg" alt="Raha"></div>
-<audio id="music" preload="auto" loop><source src="assets/raha-birthday-melody.wav" type="audio/wav"></audio>
+
 <script>
 const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s);
 const target=new Date('2026-10-14T18:00:00+05:30').getTime();
 function countdown(){let x=Math.max(0,target-Date.now());$('#d').textContent=Math.floor(x/86400000);$('#h').textContent=String(Math.floor(x%86400000/3600000)).padStart(2,'0');$('#m').textContent=String(Math.floor(x%3600000/60000)).padStart(2,'0');$('#s').textContent=String(Math.floor(x%60000/1000)).padStart(2,'0')} countdown();setInterval(countdown,1000);
-const audio=$('#music');
-async function openInvitation(){try{audio.volume=.34;await audio.play()}catch(e){} $('#gate').classList.add('gate-hide');document.body.style.overflow='auto';setTimeout(()=>$('#gate').remove(),1000)}
+
+/* Cheerful Happy-Birthday-style instrumental. It is generated in the browser,
+   so this music change requires only index.html — no new audio asset. */
+let musicCtx=null,musicTimer=null,musicPlaying=false,musicStarted=false;
+const N={C4:261.63,D4:293.66,E4:329.63,F4:349.23,G4:392.00,A4:440.00,B4:493.88,C5:523.25,D5:587.33,E5:659.25,F5:698.46,G5:783.99,A5:880.00};
+const melody=[
+ ['G4',.34],['G4',.34],['A4',.58],['G4',.58],['C5',.58],['B4',1.02],
+ ['G4',.34],['G4',.34],['A4',.58],['G4',.58],['D5',.58],['C5',1.02],
+ ['G4',.34],['G4',.34],['G5',.58],['E5',.58],['C5',.58],['B4',.58],['A4',1.02],
+ ['F5',.34],['F5',.34],['E5',.58],['C5',.58],['D5',.58],['C5',1.18]
+];
+const chords=[[N.C4,N.E4,N.G4],[N.F4,N.A4,N.C5],[N.G4,N.B4,N.D5],[N.C4,N.E4,N.G4]];
+function tone(freq,when,dur,type='sine',gain=.06){const o=musicCtx.createOscillator(),g=musicCtx.createGain();o.type=type;o.frequency.setValueAtTime(freq,when);g.gain.setValueAtTime(.0001,when);g.gain.exponentialRampToValueAtTime(gain,when+.035);g.gain.exponentialRampToValueAtTime(.0001,when+dur-.035);o.connect(g).connect(musicCtx.destination);o.start(when);o.stop(when+dur)}
+function playBirthdayPhrase(){
+  if(!musicCtx)return;
+  const now=musicCtx.currentTime+.05; let t=now;
+  melody.forEach(([note,dur])=>{tone(N[note],t,dur*.86,'triangle',.075);tone(N[note]*2,t,dur*.45,'sine',.018);t+=dur});
+  const bar=.34+.34+.58+.58+.58+1.02;
+  for(let b=0;b<4;b++){
+    const bt=now+b*bar*1; const chord=chords[b];
+    chord.forEach((f,j)=>tone(f,bt,j===0?1.25:1.05,'sine',.018));
+  }
+}
+function startBirthdayMusic(){
+  try{
+    if(!musicCtx)musicCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(musicCtx.state==='suspended')musicCtx.resume();
+    if(musicPlaying)return;
+    musicPlaying=true; musicStarted=true;
+    playBirthdayPhrase();
+    const phraseMs=melody.reduce((a,x)=>a+x[1],0)*1000+350;
+    musicTimer=setInterval(playBirthdayPhrase,phraseMs);
+  }catch(e){}
+}
+function stopBirthdayMusic(){musicPlaying=false;clearInterval(musicTimer);musicTimer=null;if(musicCtx)musicCtx.suspend()}
+async function openInvitation(){
+  startBirthdayMusic();
+  $('#gate').classList.add('gate-hide');document.body.style.overflow='auto';
+  setTimeout(()=>$('#gate').remove(),1000);
+}
 $('#openBtn').addEventListener('click',openInvitation);
-// Attempt autoplay, while keeping the intentional Open Invitation interaction for browsers that block autoplay.
-window.addEventListener('load',()=>{audio.volume=.34;audio.play().catch(()=>{})});
+// Attempt automatic start. Browsers that permit autoplay will hear it immediately;
+// browsers that block sound start it on the Open Invitation tap.
+window.addEventListener('load',()=>{startBirthdayMusic()});
+
 $('#shareBtn').addEventListener('click',()=>{const msg=`You're invited to Raha's 1st Birthday! 👑\n14 October 2026 · 6:00 PM\nAt Our Home\n\n${location.href}`;window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank')});
 $('#calendarBtn').addEventListener('click',()=>{const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Raha//Birthday//EN','BEGIN:VEVENT','DTSTART:20261014T180000','DTEND:20261014T210000','SUMMARY:Raha\'s 1st Birthday','DESCRIPTION:A Royal Celebration for Raha.','LOCATION:At Our Home','END:VEVENT','END:VCALENDAR'].join('\r\n');const a=document.createElement('a');a.href='data:text/calendar;charset=utf-8,'+encodeURIComponent(ics);a.download='Raha-1st-Birthday.ics';a.click()});
 $$('.photo-card').forEach(c=>c.addEventListener('click',()=>{$('#modalImg').src=c.dataset.src;$('#modal').classList.add('show')}));$('#close').addEventListener('click',()=>$('#modal').classList.remove('show'));$('#modal').addEventListener('click',e=>{if(e.target.id==='modal')$('#modal').classList.remove('show')});
